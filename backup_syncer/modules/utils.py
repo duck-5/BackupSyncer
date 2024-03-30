@@ -21,11 +21,11 @@ def copy_file_with_pbar(src_fp: str, backup_fp: str) -> None:
     Copies "src_fp" to "backup_fp" with a progress bar (by size)
     """
     with tqdm(
-        total=os.path.getsize(src_fp),
-        unit="B",
-        unit_scale=True,
-        desc=f"Copying {src_fp} to {backup_fp}",
-        miniters=0.1,
+            total=os.path.getsize(src_fp),
+            unit="B",
+            unit_scale=True,
+            desc=f"Copying {src_fp} to {backup_fp}",
+            miniters=0.1,
     ) as pbar:
         copy_file_and_update_pbar(src_fp, backup_fp, pbar)
 
@@ -72,11 +72,11 @@ def copy_dir_with_pbar(src_dp: str, backup_dp: str) -> None:
     dir_size, files = get_dir_size_and_files(src_dp)
 
     with tqdm(
-        total=dir_size,
-        unit="B",
-        unit_scale=True,
-        desc=f"Copying {src_dp} to {backup_dp}",
-        miniters=0.1,
+            total=dir_size,
+            unit="B",
+            unit_scale=True,
+            desc=f"Copying {src_dp} to {backup_dp}",
+            miniters=0.1,
     ) as pbar:
         for file in files:
             dir_name = os.path.dirname(file)

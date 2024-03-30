@@ -71,7 +71,11 @@ class Syncer:
 
     def search_trash_in_backup(self, src_dir_path, backup_dir_path) -> None:
         src_dirs = os.listdir(src_dir_path)
-        backup_dirs = os.listdir(backup_dir_path)
+        try:
+            backup_dirs = os.listdir(backup_dir_path)
+        except NotADirectoryError:
+            return
+
         for item_path in backup_dirs:
             if item_path not in src_dirs:
                 item_to_delete = sync_attribute_delete.SyncAttributeDelete(
@@ -161,9 +165,22 @@ class Syncer:
                 progress_bar.update(1)
 
             elif src_dir in backup_directories:
-                self.scan_directory(
-                    src_subdir_path, backup_subdir_path, progress_bar=progress_bar
-                )
+                if os.path.isdir(backup_subdir_path):
+                    self.scan_directory(
+                        src_subdir_path, backup_subdir_path, progress_bar=progress_bar
+                    )
+                else:
+                    item = sync_attribute_delete.SyncAttributeDelete(
+                        index=len(self.items_to_delete),
+                        backup_item_path=backup_subdir_path
+                    )
+                    self.items_to_delete.append(item)
+                    item = sync_attribute_create.SyncAttributeCreate(
+                        index=len(self.items_to_create),
+                        original_item_path=src_subdir_path,
+                        backup_item_path=backup_subdir_path
+                    )
+                    self.items_to_create.append(item)
 
             else:
                 to_create_item = sync_attribute_create.SyncAttributeCreate(
@@ -176,9 +193,9 @@ class Syncer:
 
     def perform_sync(self) -> None:
         for item in (
-            self.items_to_create
+            self.items_to_delete
             + self.files_to_replace
-            + self.items_to_delete
+            + self.items_to_create
             + self.outdated_files
         ):
             if not item.is_canceled:
