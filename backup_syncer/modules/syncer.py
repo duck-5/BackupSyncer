@@ -8,15 +8,8 @@ from tqdm import tqdm
 from threading import Thread
 from backup_syncer.modules import utils
 from backup_syncer.modules.backup_syncer_config import BackupSyncerConfig
-from backup_syncer.modules.sync_file_types import (
-    sync_attribute_create,
-    sync_attribute_replace,
-)
+
 from backup_syncer.modules.sync_file_types import SyncAttribute, SyncAttributeDelete, SyncAttributeReplace, SyncAttributeOutdated, SyncAttributeCreate
-from backup_syncer.modules.sync_file_types import (
-    sync_attribute_outdated,
-    sync_attribute_delete,
-)
 from backup_syncer.modules.utils import check_if_identical, remove_duplicates
 
 
@@ -92,7 +85,7 @@ class Syncer:
 
         for item_path in backup_dirs:
             if item_path not in src_dirs:
-                item_to_delete = sync_attribute_delete.SyncAttributeDelete(
+                item_to_delete = SyncAttributeDelete(
                     index=len(self.items_to_delete),
                     backup_item_path=os.path.join(backup_dir_path, item_path),
                 )
@@ -178,12 +171,12 @@ class Syncer:
                         src_subdir_path, backup_subdir_path, progress_bar=progress_bar
                     )
                 else:
-                    item = sync_attribute_delete.SyncAttributeDelete(
+                    item = SyncAttributeDelete(
                         index=len(self.items_to_delete),
                         backup_item_path=backup_subdir_path
                     )
                     self.items_to_delete.append(item)
-                    item = sync_attribute_create.SyncAttributeCreate(
+                    item = SyncAttributeCreate(
                         index=len(self.items_to_create),
                         original_item_path=src_subdir_path,
                         backup_item_path=backup_subdir_path
@@ -191,7 +184,7 @@ class Syncer:
                     self.items_to_create.append(item)
 
             else:
-                to_create_item = sync_attribute_create.SyncAttributeCreate(
+                to_create_item = SyncAttributeCreate(
                     index=len(self.items_to_create),
                     original_item_path=src_subdir_path,
                     backup_item_path=backup_subdir_path,
