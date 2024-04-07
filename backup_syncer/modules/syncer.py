@@ -34,7 +34,7 @@ class Syncer:
         self.directories_to_scan: List[
             Dict[str, str]
         ] = backup_syncer_config.sync_config_dirs
-        self.items_to_scan: List[Tuple[str, str, str]] = []
+        self.files_to_compare: List[Tuple[str, str, str]] = []
 
         self.items_to_create: List[SyncAttributeCreate] = []
         # Files that are on the source but not on the destination
@@ -126,17 +126,16 @@ class Syncer:
                         input("Do you want to change something else? ([y]/n): ") != "n"
                     )
 
-    def scan_files(self, max_number_of_processes: int, pbar, min_files_per_process: int = 500):
+    def scan_files(self, max_number_of_processes: int, pbar, min_files_per_process: int = 1000):
 
-        number_of_processes = min(max_number_of_processes, len(self.items_to_scan) // min_files_per_process)
-        number_of_files_per_process = len(self.items_to_scan) // number_of_processes + 1
+        number_of_processes = min(max_number_of_processes, len(self.files_to_compare) // min_files_per_process)
+        number_of_files_per_process = len(self.files_to_compare) // number_of_processes + 1
         progress_bar_queue = multiprocessing.Queue()
         items_queue = multiprocessing.Queue()
         processes = []
-        pbar.write(f"\nRunning with {number_of_processes} processes, {number_of_files_per_process} files per process")
 
-        for i in range(0, len(self.items_to_scan), number_of_files_per_process):
-            p = Process(target=scan_files, args=(self.items_to_scan[i:i + number_of_files_per_process], items_queue, progress_bar_queue))
+        for i in range(0, len(self.files_to_compare), number_of_files_per_process):
+            p = Process(target=scan_files, args=(self.files_to_compare[i:i + number_of_files_per_process], items_queue, progress_bar_queue))
             processes.append(p)
             p.start()
 
@@ -162,7 +161,7 @@ class Syncer:
             backup_subdir_path = os.path.join(backup_dir_path, src_dir)
 
             if not os.path.isdir(src_subdir_path):
-                self.items_to_scan.append((src_subdir_path, src_dir, backup_dir_path))
+                self.files_to_compare.append((src_subdir_path, src_dir, backup_dir_path))
                 progress_bar.update(1)
 
             elif src_dir in backup_directories:
@@ -218,14 +217,14 @@ class Syncer:
                     progress_bar=pbar,
                 )
 
-            with tqdm(
-                    total=len(self.items_to_scan),
-                    unit="F",
-                    unit_scale=True,
-                    desc=f"Scanning {len(self.items_to_scan)}",
-                    miniters=0.1,
-            ) as pbar:
-                self.scan_files(5, pbar=pbar)
+        with tqdm(
+                total=len(self.files_to_compare),
+                unit="F",
+                unit_scale=True,
+                desc="Comparing files",
+                miniters=0.1,
+        ) as pbar:
+            self.scan_files(8, pbar=pbar)
 
         self.items_to_create = remove_duplicates(self.items_to_create)
         self.items_to_delete = remove_duplicates(self.items_to_delete)
