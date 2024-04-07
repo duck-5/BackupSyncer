@@ -1,6 +1,6 @@
 import filecmp
 import os
-from typing import Tuple, List
+from typing import Tuple, List, Any
 
 from tqdm import tqdm
 
@@ -86,3 +86,11 @@ def copy_dir_with_pbar(src_dp: str, backup_dp: str) -> None:
             backup_file_path = file.replace(src_dp, backup_dp)
 
             copy_file_and_update_pbar(file, backup_file_path, pbar)
+
+
+def remove_duplicates(l: List[Any]) -> List[Any]:
+    res = []
+    for v in l:
+        if v not in res:
+            res.append(v)
+    return res

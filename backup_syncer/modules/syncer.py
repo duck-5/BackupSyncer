@@ -12,18 +12,13 @@ from backup_syncer.modules.sync_file_types import (
     sync_attribute_create,
     sync_attribute_replace,
 )
+from backup_syncer.modules.sync_file_types import SyncAttribute, SyncAttributeDelete, SyncAttributeReplace, SyncAttributeOutdated, SyncAttributeCreate
 from backup_syncer.modules.sync_file_types import (
     sync_attribute_outdated,
     sync_attribute_delete,
 )
-from backup_syncer.modules.utils import check_if_identical
+from backup_syncer.modules.utils import check_if_identical, remove_duplicates
 
-def timeit(f):
-    def foo(*args):
-        s = time.time()
-        f(*args)
-        input(f"time: {time.time() - s}")
-    return foo
 
 class Syncer:
     CHANGE_MENU = (
@@ -48,14 +43,22 @@ class Syncer:
         ] = backup_syncer_config.sync_config_dirs
         self.items_to_scan: List[Tuple[str, str, str]] = []
 
-        self.items_to_create: List[sync_attribute_create.SyncAttributeCreate] = []
+        self.items_to_create: List[SyncAttributeCreate] = []
         # Files that are on the source but not on the destination
-        self.items_to_delete: List[sync_attribute_delete.SyncAttributeDelete] = []
+        self.items_to_delete: List[SyncAttributeDelete] = []
         # Files that are on the destination but not on the source, and the source is newer
-        self.files_to_replace: List[sync_attribute_replace.SyncAttributeReplace] = []
+        self.files_to_replace: List[SyncAttributeReplace] = []
         # Files that are not updated in the destination, and will be recreated from the source
-        self.outdated_files: List[sync_attribute_outdated.SyncAttributeOutdated] = []
+        self.outdated_files: List[SyncAttributeOutdated] = []
         # Files that are newer on the destination than on the source, and won't be replaced
+
+        self.type2list: Dict[Any, List] = {
+            SyncAttributeCreate: self.items_to_create,
+            SyncAttributeDelete: self.items_to_delete,
+            SyncAttributeReplace: self.files_to_replace,
+            SyncAttributeOutdated: self.outdated_files
+        }
+
         self.sync_actions_change_options = {
             "n": self.items_to_create,
             "d": self.items_to_delete,
@@ -63,7 +66,7 @@ class Syncer:
             "o": self.outdated_files,
             "m": lambda *args: print(self.CHANGE_MENU),
         }
-        self.printing_categories_titles = {
+        self.create_categories_titles = lambda: {
             "Going to be created:": self.items_to_create,
             "Going to be updated:": self.files_to_replace,
             "Going to be deleted:": self.items_to_delete,
@@ -73,7 +76,7 @@ class Syncer:
 
     def print_sync(self) -> None:
         self.display_header_seperator()
-        for title, files_list in self.printing_categories_titles.items():
+        for title, files_list in self.create_categories_titles().items():
             if files_list:
                 print(title)
                 for i, item in enumerate(files_list):
@@ -149,12 +152,7 @@ class Syncer:
                 pbar.update(progress_bar_queue.get())
             while not items_queue.empty():
                 item = items_queue.get()
-                if isinstance(item, sync_attribute_create.SyncAttributeCreate):
-                    self.items_to_create.append(item)
-                elif isinstance(item, sync_attribute_replace.SyncAttributeReplace):
-                    self.files_to_replace.append(item)
-                elif isinstance(item, sync_attribute_outdated.SyncAttributeOutdated):
-                    self.outdated_files.append(item)
+                self.put_item_in_list(item)
 
     def scan_directory(
         self, src_dir_path: str, backup_dir_path: str, progress_bar: tqdm
@@ -236,23 +234,26 @@ class Syncer:
             ) as pbar:
                 self.scan_files(5, pbar=pbar)
 
+        self.items_to_create = remove_duplicates(self.items_to_create)
+        self.items_to_delete = remove_duplicates(self.items_to_delete)
+        self.files_to_replace = remove_duplicates(self.files_to_replace)
+        self.outdated_files = remove_duplicates(self.outdated_files)
 
-def scan_files(items_to_scan, items_queue: multiprocessing.Queue, progress_bar_queue: multiprocessing.Queue):
-    for file_data in items_to_scan:
-        item = scan_file(*file_data)
-        progress_bar_queue.put(1)
-        items_queue.put(item)
+    def put_item_in_list(self, item: SyncAttribute):
+        lst = self.type2list[type(item)]
+        item.index = len(lst)
+        lst.append(item)
 
 
 def scan_file(
         src_file_path: str, src_file_name: str, backup_dir_path: str
-):
+) -> SyncAttribute:
     backup_dirs = os.listdir(backup_dir_path)
 
     backup_file_path = os.path.join(backup_dir_path, src_file_name)
 
     if src_file_name not in backup_dirs:
-        return sync_attribute_create.SyncAttributeCreate(
+        return SyncAttributeCreate(
             index=1,
             original_item_path=src_file_path,
             backup_item_path=os.path.join(backup_dir_path, src_file_name),
@@ -260,14 +261,22 @@ def scan_file(
 
     elif not check_if_identical(src_file_path, backup_file_path):
         if os.stat(backup_file_path).st_mtime > os.stat(src_file_path).st_mtime:
-            return sync_attribute_outdated.SyncAttributeOutdated(
+            return SyncAttributeOutdated(
                 index=1,
                 original_item_path=src_file_path,
                 backup_item_path=backup_file_path,
             )
         else:
-            return sync_attribute_replace.SyncAttributeReplace(
+            return SyncAttributeReplace(
                 index=1,
                 original_item_path=src_file_path,
                 backup_item_path=backup_file_path,
             )
+
+
+def scan_files(items_to_scan, items_queue: multiprocessing.Queue, progress_bar_queue: multiprocessing.Queue):
+    for file_data in items_to_scan:
+        item = scan_file(*file_data)
+        progress_bar_queue.put(1)
+        if item:
+            items_queue.put(item)
