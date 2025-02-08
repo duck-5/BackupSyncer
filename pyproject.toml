@@ -14,8 +14,6 @@ dependencies = [
   "shutils",
   "langdetect",
   "tqdm",
-  "pyuac",
-  "pypiwin32"
 ]
 requires-python = ">=3.6"
 
