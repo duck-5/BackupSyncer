@@ -73,7 +73,8 @@ def get_dir_size_and_files(dir_path: str) -> Tuple[int, List[str]]:
 
 def copy_dir_with_pbar(src_dp: str, backup_dp: str) -> None:
     dir_size, files = get_dir_size_and_files(src_dp)
-
+    os.makedirs(backup_dp)
+    
     with tqdm(
         total=dir_size,
         unit="B",
