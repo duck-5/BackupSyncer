@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "backup_syncer"
+version = "2.5.0"
+description = "A local backups creator and syncer, for easy backup handling!"
+readme = "README.md"
+authors = [
+  {name = "JesusDMan"},
+]
+dependencies = [
+  "shutils",
+  "langdetect",
+  "tqdm",
+  "pyuac",
+  "pypiwin32"
+]
+requires-python = ">=3.6"
+
+[project.scripts]
+bsync = "backup_syncer.bin.sync_files:main"
