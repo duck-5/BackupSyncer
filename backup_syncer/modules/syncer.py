@@ -8,8 +8,15 @@ from threading import Thread
 from backup_syncer.modules import utils
 from backup_syncer.modules.backup_syncer_config import BackupSyncerConfig
 
-from backup_syncer.modules.sync_file_types import SyncAttribute, SyncAttributeDelete, SyncAttributeReplace, SyncAttributeOutdated, SyncAttributeCreate
+from backup_syncer.modules.sync_file_types import (
+    SyncAttribute,
+    SyncAttributeDelete,
+    SyncAttributeReplace,
+    SyncAttributeOutdated,
+    SyncAttributeCreate,
+)
 from backup_syncer.modules.utils import check_if_identical, remove_duplicates
+
 
 class Syncer:
     CHANGE_MENU = (
@@ -47,7 +54,7 @@ class Syncer:
             SyncAttributeCreate: self.items_to_create,
             SyncAttributeDelete: self.items_to_delete,
             SyncAttributeReplace: self.files_to_replace,
-            SyncAttributeOutdated: self.outdated_files
+            SyncAttributeOutdated: self.outdated_files,
         }
 
         self.sync_actions_change_options = {
@@ -124,17 +131,30 @@ class Syncer:
                         input("Do you want to change something else? ([y]/n): ") != "n"
                     )
 
-    def scan_files(self, max_number_of_processes: int, pbar, min_files_per_process: int = 1000):
-        
-        number_of_processes = min(max_number_of_processes, (max(len(self.files_to_compare) // min_files_per_process, 1)))
-        
-        number_of_files_per_process = len(self.files_to_compare) // number_of_processes + 1
+    def scan_files(
+        self, max_number_of_processes: int, pbar, min_files_per_process: int = 1000
+    ):
+        number_of_processes = min(
+            max_number_of_processes,
+            (max(len(self.files_to_compare) // min_files_per_process, 1)),
+        )
+
+        number_of_files_per_process = (
+            len(self.files_to_compare) // number_of_processes + 1
+        )
         progress_bar_queue = multiprocessing.Queue()
         items_queue = multiprocessing.Queue()
         processes = []
 
         for i in range(0, len(self.files_to_compare), number_of_files_per_process):
-            p = Process(target=scan_files, args=(self.files_to_compare[i:i + number_of_files_per_process], items_queue, progress_bar_queue))
+            p = Process(
+                target=scan_files,
+                args=(
+                    self.files_to_compare[i : i + number_of_files_per_process],
+                    items_queue,
+                    progress_bar_queue,
+                ),
+            )
             processes.append(p)
             p.start()
 
@@ -160,7 +180,9 @@ class Syncer:
             backup_subdir_path = os.path.join(backup_dir_path, src_dir)
 
             if not os.path.isdir(src_subdir_path):
-                self.files_to_compare.append((src_subdir_path, src_dir, backup_dir_path))
+                self.files_to_compare.append(
+                    (src_subdir_path, src_dir, backup_dir_path)
+                )
                 progress_bar.update(1)
 
             elif src_dir in backup_directories:
@@ -171,13 +193,13 @@ class Syncer:
                 else:
                     item = SyncAttributeDelete(
                         index=len(self.items_to_delete),
-                        backup_item_path=backup_subdir_path
+                        backup_item_path=backup_subdir_path,
                     )
                     self.items_to_delete.append(item)
                     item = SyncAttributeCreate(
                         index=len(self.items_to_create),
                         original_item_path=src_subdir_path,
-                        backup_item_path=backup_subdir_path
+                        backup_item_path=backup_subdir_path,
                     )
                     self.items_to_create.append(item)
 
@@ -217,11 +239,11 @@ class Syncer:
                 )
 
         with tqdm(
-                total=len(self.files_to_compare),
-                unit="F",
-                unit_scale=True,
-                desc="Comparing files",
-                miniters=0.1,
+            total=len(self.files_to_compare),
+            unit="F",
+            unit_scale=True,
+            desc="Comparing files",
+            miniters=0.1,
         ) as pbar:
             self.scan_files(max_number_of_processes=8, pbar=pbar)
 
@@ -237,14 +259,13 @@ class Syncer:
 
 
 def scan_file(
-        src_file_path: str, src_file_name: str, backup_dir_path: str
+    src_file_path: str, src_file_name: str, backup_dir_path: str
 ) -> Optional[SyncAttribute]:
-
     try:
         os.path.getsize(src_file_path)
     except OSError:
         return
-    
+
     backup_dirs = os.listdir(backup_dir_path)
 
     backup_file_path = os.path.join(backup_dir_path, src_file_name)
@@ -271,7 +292,11 @@ def scan_file(
             )
 
 
-def scan_files(items_to_scan, items_queue: multiprocessing.Queue, progress_bar_queue: multiprocessing.Queue):
+def scan_files(
+    items_to_scan,
+    items_queue: multiprocessing.Queue,
+    progress_bar_queue: multiprocessing.Queue,
+):
     for file_data in items_to_scan:
         item = scan_file(*file_data)
         progress_bar_queue.put(1)

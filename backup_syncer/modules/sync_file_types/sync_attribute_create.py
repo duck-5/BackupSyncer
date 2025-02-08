@@ -20,7 +20,7 @@ class SyncAttributeCreate(SyncAttribute):
             self.is_canceled = True
             print(f"Item {self.index} is canceled (invalid file)")
             return
-        
+
         if self.item_type == "directory":
             os.mkdir(self.backup_file_path)
             copy_dir_with_pbar(
@@ -31,7 +31,7 @@ class SyncAttributeCreate(SyncAttribute):
             copy_file_with_pbar(
                 src_fp=self.source_file_path, backup_fp=self.backup_file_path
             )
-    
+
     def _is_item_invalid_file(self) -> bool:
         if self.item_type == "file":
             try:

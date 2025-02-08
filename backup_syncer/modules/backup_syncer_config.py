@@ -2,10 +2,13 @@ import os
 from typing import List, Dict
 from pathlib import Path
 
+
 class BackupSyncerConfig:
     NOTE_MARKER = "#"
     SRC_AND_BACKUP_SEPARATOR = " | "
-    DEFAULT_CONFIG_FILE_PATH = Path(os.getenv("APPDATA")) / "BackupSyncer" / "backup-syncer.config"
+    DEFAULT_CONFIG_FILE_PATH = (
+        Path(os.getenv("APPDATA")) / "BackupSyncer" / "backup-syncer.config"
+    )
     CONFIG_TEMPLATE = r"""# This is a config file template.
 # setup attribute should be in the format of:
 # <path_to_source_directory> | <path_to_backup_directory>
@@ -17,24 +20,25 @@ a\new\path\to\an\src\dir | a\new\path\to\a\backup\dir
 
 # You can add as many pairs as you want.
 """
-    
-    
+
     def __init__(self, config_fp: Path = DEFAULT_CONFIG_FILE_PATH):
         print(f"Using config file: {config_fp}")
         self._config_fp: Path = config_fp
         self.sync_config_dirs: List[Dict[str, str]] = []
         self._update_sync_config_dirs()
-    
+
     def _create_sync_config_file_if_gone(self) -> None:
         if self._config_fp.is_dir():
-            raise FileNotFoundError(f"Config file not found and cannot be created: {self._config_fp} is a directory")
+            raise FileNotFoundError(
+                f"Config file not found and cannot be created: {self._config_fp} is a directory"
+            )
 
         if not self._config_fp.exists():
             os.makedirs(self._config_fp.parent)
             with open(self._config_fp, "w") as config_file:
                 config_file.write(self.CONFIG_TEMPLATE)
                 print(f"Config file not found, created at {self._config_fp}")
-    
+
     def _update_sync_config_dirs(self) -> None:
         """
         Update the sync_config_dirs attribute by the config file and update the config file, until the user is happy.

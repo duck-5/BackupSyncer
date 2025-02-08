@@ -34,13 +34,15 @@ class SyncAttribute(abc.ABC):
         ...
 
     def __eq__(self, other):
-        if not issubclass(type(other), SyncAttribute) and not isinstance(other, SyncAttribute):
+        if not issubclass(type(other), SyncAttribute) and not isinstance(
+            other, SyncAttribute
+        ):
             return False
         return (
-                self.item_type == other.item_type and
-                self.is_canceled == other.is_canceled and
-                self.source_file_path == other.source_file_path and
-                self.backup_file_path == other.backup_file_path
+            self.item_type == other.item_type
+            and self.is_canceled == other.is_canceled
+            and self.source_file_path == other.source_file_path
+            and self.backup_file_path == other.backup_file_path
         )
 
     def __str__(self):
