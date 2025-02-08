@@ -1,58 +1,81 @@
 import os
 from typing import List, Dict
-
+from pathlib import Path
 
 class BackupSyncerConfig:
-    note_marker = "#"
-    src_and_backup_seperator = " | "
+    NOTE_MARKER = "#"
+    SRC_AND_BACKUP_SEPARATOR = " | "
+    DEFAULT_CONFIG_FILE_PATH = Path(os.getenv("APPDATA")) / "BackupSyncer" / "backup-syncer.config"
+    CONFIG_TEMPLATE = r"""# This is a config file template.
+# setup attribute should be in the format of:
+# <path_to_source_directory> | <path_to_backup_directory>
+# Attributes starting with "#" will be ignored!
 
-    def __init__(self, config_fp: str):
-        self.config_fp = config_fp
+# Example:
+a\path\to\an\src\dir | a\path\to\a\backup\dir
+a\new\path\to\an\src\dir | a\new\path\to\a\backup\dir
+
+# You can add as many pairs as you want.
+"""
+    
+    
+    def __init__(self, config_fp: Path = DEFAULT_CONFIG_FILE_PATH):
+        print(f"Using config file: {config_fp}")
+        self._config_fp: Path = config_fp
         self.sync_config_dirs: List[Dict[str, str]] = []
-        self.update_sync_config_dirs()
+        self._update_sync_config_dirs()
+    
+    def _create_sync_config_file_if_gone(self) -> None:
+        if self._config_fp.is_dir():
+            raise FileNotFoundError(f"Config file not found and cannot be created: {self._config_fp} is a directory")
 
-    def update_sync_config_dirs(self) -> None:
+        if not self._config_fp.exists():
+            os.makedirs(self._config_fp.parent)
+            with open(self._config_fp, "w") as config_file:
+                config_file.write(self.CONFIG_TEMPLATE)
+                print(f"Config file not found, created at {self._config_fp}")
+    
+    def _update_sync_config_dirs(self) -> None:
         """
         Update the sync_config_dirs attribute by the config file and update the config file, until the user is happy.
         :return: None
         """
-        if not os.path.exists(self.config_fp):
-            self.update_config_file()
+        if not os.path.exists(self._config_fp):
+            self._update_config_file()
 
-        self.sync_config_dirs = self.get_sync_config_dirs_from_configuration()
+        self.sync_config_dirs = self._get_sync_config_dirs_from_configuration()
         self.display()
 
         while input("Fine? ([y]/n): ") == "n":
-            self.update_config_file()
-            self.sync_config_dirs = self.get_sync_config_dirs_from_configuration()
+            self._update_config_file()
+            self.sync_config_dirs = self._get_sync_config_dirs_from_configuration()
             self.display()
 
-        self.create_missing_backup_directories()
+        self._create_missing_backup_directories()
 
-    def get_sync_config_dirs_from_configuration(self) -> List[Dict[str, str]]:
+    def _get_sync_config_dirs_from_configuration(self) -> List[Dict[str, str]]:
         """
         Get the source and backup directories from the config file.
         :return: A list of source and backup directories.
         """
         configuration = []
-        with open(self.config_fp, "r", encoding="UTF-8") as config_file:
+        with open(self._config_fp, "r", encoding="UTF-8") as config_file:
             dir_paths = config_file.read().split("\n")
             for line in dir_paths:
-                if self.validate_config_file_attribute(line):
-                    line = line.split(self.src_and_backup_seperator)
+                if self._validate_config_file_attribute(line):
+                    line = line.split(self.SRC_AND_BACKUP_SEPARATOR)
                     configuration.append({"src": line[0], "backup": line[1]})
         return configuration
 
-    def update_config_file(self) -> None:
+    def _update_config_file(self) -> None:
         """
         Create the config file if it doesn't exist and open it with notepad for editing.
         :return: None
         """
-        if not os.path.exists(os.path.dirname(self.config_fp)):
-            os.mkdir(os.path.dirname(self.config_fp))
-        os.system(f"notepad {self.config_fp}")
+        self._create_sync_config_file_if_gone()
+        os.system(f"notepad {self._config_fp}")
 
-    def create_missing_backup_directories(self):
+    def _create_missing_backup_directories(self):
         """
         Create backup directories that doesn't exist.
         :return:
@@ -63,43 +86,43 @@ class BackupSyncerConfig:
                 print(f"{backup_dir_path} doesn't exists, creating...")
                 os.makedirs(backup_dir_path)
 
-    def validate_config_file_attribute(self, attribute: str) -> bool:
+    def _validate_config_file_attribute(self, attribute: str) -> bool:
         """
         Validates a config attribute.
         :param attribute: A config-file attribute.
         :return: If the attribute is valid.
         """
-        return self.config_file_attribute_string_validation(
+        return self._config_file_attribute_string_validation(
             attribute
-        ) and self.config_file_attribute_src_and_backup_validation(attribute)
+        ) and self._config_file_attribute_src_and_backup_validation(attribute)
 
-    def config_file_attribute_string_validation(self, attribute: str):
+    def _config_file_attribute_string_validation(self, attribute: str):
         """
         Validates a config-file attribute -> If this attribute is a source-backup format attribute.
         :param attribute: A line from the config file.
         :return: If the attribute's format is valid.
         """
-        if not attribute or attribute[0] == self.note_marker:
+        if not attribute or attribute[0] == self.NOTE_MARKER:
             return False
-        if self.src_and_backup_seperator not in attribute:
+        if self.SRC_AND_BACKUP_SEPARATOR not in attribute:
             print(
-                f"Invalid: '{attribute}' doesn't contain {self.src_and_backup_seperator}, skipping..."
+                f"Invalid: '{attribute}' doesn't contain {self.SRC_AND_BACKUP_SEPARATOR}, skipping..."
             )
             return False
-        if attribute.count(self.src_and_backup_seperator) != 1:
+        if attribute.count(self.SRC_AND_BACKUP_SEPARATOR) != 1:
             print(
-                f"Invalid: '{attribute}' can't contain {self.src_and_backup_seperator} more than once, skipping..."
+                f"Invalid: '{attribute}' can't contain {self.SRC_AND_BACKUP_SEPARATOR} more than once, skipping..."
             )
             return False
         return True
 
-    def config_file_attribute_src_and_backup_validation(self, attribute: str) -> bool:
+    def _config_file_attribute_src_and_backup_validation(self, attribute: str) -> bool:
         """
         Validates the source and backup directories of an attribute.
         :param attribute: A config-file attribute.
         :return: If the attribute's directories are valid (exists, etc.)
         """
-        src_dir_path, backup_dir_path = attribute.split(self.src_and_backup_seperator)
+        src_dir_path, backup_dir_path = attribute.split(self.SRC_AND_BACKUP_SEPARATOR)
 
         if not os.path.exists(src_dir_path):
             print(f"{src_dir_path} doesn't exist, skipping...")

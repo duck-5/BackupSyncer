@@ -3,9 +3,7 @@ from backup_syncer.modules.syncer import Syncer
 
 
 def main():
-    backup_syncer_config = BackupSyncerConfig(
-        r"D:\ProgramFiles\sync_conf\src_dst_setup.txt"
-    )
+    backup_syncer_config = BackupSyncerConfig()
     syncer = Syncer(backup_syncer_config)
     syncer.scan_directories()
     syncer.print_sync()
