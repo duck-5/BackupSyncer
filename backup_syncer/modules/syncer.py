@@ -1,8 +1,7 @@
 from multiprocessing import Process
 import multiprocessing
 import os
-import time
-from typing import List, Callable, Any, Dict, Tuple
+from typing import List, Callable, Any, Dict, Optional, Tuple
 
 from tqdm import tqdm
 from threading import Thread
@@ -11,7 +10,6 @@ from backup_syncer.modules.backup_syncer_config import BackupSyncerConfig
 
 from backup_syncer.modules.sync_file_types import SyncAttribute, SyncAttributeDelete, SyncAttributeReplace, SyncAttributeOutdated, SyncAttributeCreate
 from backup_syncer.modules.utils import check_if_identical, remove_duplicates
-
 
 class Syncer:
     CHANGE_MENU = (
@@ -225,7 +223,7 @@ class Syncer:
                 desc="Comparing files",
                 miniters=0.1,
         ) as pbar:
-            self.scan_files(8, pbar=pbar)
+            self.scan_files(max_number_of_processes=8, pbar=pbar)
 
         self.items_to_create = remove_duplicates(self.items_to_create)
         self.items_to_delete = remove_duplicates(self.items_to_delete)
@@ -240,7 +238,13 @@ class Syncer:
 
 def scan_file(
         src_file_path: str, src_file_name: str, backup_dir_path: str
-) -> SyncAttribute:
+) -> Optional[SyncAttribute]:
+
+    try:
+        os.path.getsize(src_file_path)
+    except OSError:
+        return
+    
     backup_dirs = os.listdir(backup_dir_path)
 
     backup_file_path = os.path.join(backup_dir_path, src_file_name)

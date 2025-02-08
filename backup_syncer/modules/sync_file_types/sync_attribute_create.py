@@ -16,6 +16,11 @@ class SyncAttributeCreate(SyncAttribute):
         if self.is_canceled:
             return
 
+        if self._is_item_invalid_file():
+            self.is_canceled = True
+            print(f"Item {self.index} is canceled (invalid file)")
+            return
+        
         if self.item_type == "directory":
             os.mkdir(self.backup_file_path)
             copy_dir_with_pbar(
@@ -26,6 +31,14 @@ class SyncAttributeCreate(SyncAttribute):
             copy_file_with_pbar(
                 src_fp=self.source_file_path, backup_fp=self.backup_file_path
             )
+    
+    def _is_item_invalid_file(self) -> bool:
+        if self.item_type == "file":
+            try:
+                os.path.getsize(self.source_file_path)
+            except OSError:
+                return True
+        return False
 
     def __present__(self):
         return (

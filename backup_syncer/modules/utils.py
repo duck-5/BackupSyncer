@@ -63,8 +63,11 @@ def get_dir_size_and_files(dir_path: str) -> Tuple[int, List[str]]:
     if os.path.isdir(dir_path):
         for path, dirs, filenames in os.walk(dir_path):
             for filename in filenames:
-                files_size_sum += os.path.getsize(os.path.join(path, filename))
-                files.append(os.path.join(path, filename))
+                try:
+                    files_size_sum += os.path.getsize(os.path.join(path, filename))
+                    files.append(os.path.join(path, filename))
+                except OSError:
+                    pass
     return files_size_sum, files
 
 
