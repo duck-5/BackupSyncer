@@ -127,8 +127,9 @@ class Syncer:
                     )
 
     def scan_files(self, max_number_of_processes: int, pbar, min_files_per_process: int = 1000):
-
-        number_of_processes = min(max_number_of_processes, len(self.files_to_compare) // min_files_per_process)
+        
+        number_of_processes = min(max_number_of_processes, (max(len(self.files_to_compare) // min_files_per_process, 1)))
+        
         number_of_files_per_process = len(self.files_to_compare) // number_of_processes + 1
         progress_bar_queue = multiprocessing.Queue()
         items_queue = multiprocessing.Queue()
